@@ -18,10 +18,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Book Press
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Bind the Almanac
         run: |
+          pushd src
+          npm install
+          npm run build
+          popd
           mkdir ./almanac
-          cp src/index.html ./almanac/index.html
+          cp -v -R src/dist/* ./almanac/
 
       - name: Setup reading pult
         if: github.ref == 'refs/heads/main'
@@ -33,7 +42,7 @@ jobs:
         with:
           path: "./almanac"
 
-  deploy-doc:
+  deploy-almanac:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: build
