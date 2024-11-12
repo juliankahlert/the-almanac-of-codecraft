@@ -1,0 +1,8 @@
+---
+
+entries:
+  - id: title
+    title: The Almanac of Codecraft
+    page: content/the-almanac-of-codecraft.md
+    tags:
+    - "The Almanac of Codecraft"
