@@ -3,13 +3,13 @@
 entries:
   - id: title
     title: The Almanac of Codecraft
-    page: content/the-almanac-of-codecraft.md
+    page: the-almanac-of-codecraft.md
     tags:
     - "The Almanac of Codecraft"
 
   - id: dynamic
     title: Simple Github Pages Setup
-    page: content/simple-github-pages-setup.md
+    page: simple-github-pages-setup.md
     tags:
     - "simple Github Pages setup"
     - "Github Pages"
