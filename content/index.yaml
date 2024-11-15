@@ -8,6 +8,25 @@ entries:
     - "The Almanac of Codecraft"
 
   - id: dynamic
+    title: Traits in C
+    page: traits-in-c.md
+    tags:
+    - "Traits"
+    - "Polymorphism"
+    - "Inheritance"
+    - "C programming"
+    - "Function pointers"
+    - "Modular design"
+    - "Code reusability"
+    - "Structs"
+    - "Type safety"
+    - "Behavior encapsulation"
+    - "Composition"
+    - "Clean code"
+    - "Flexibility"
+    - "Object-Orientation"
+
+  - id: dynamic
     title: Simple Github Pages Setup
     page: simple-github-pages-setup.md
     tags:
