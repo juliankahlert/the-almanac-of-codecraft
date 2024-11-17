@@ -1,14 +1,30 @@
 <template>
   <div v-if="is_loading">Loading...</div>
   <div v-if="err" class="error_message">{{ err }}</div>
+
+  <!-- Floating Index Section -->
+  <el-card v-if="index.length" class="floating_index_card">
+    <h3>Index</h3>
+    <ul>
+      <li v-for="item in index" :key="item.id">
+        <a :href="'#' + item.id" @click.prevent="scroll_to(item.id)">{{ item.id }}. {{ item.title }}</a>
+      </li>
+    </ul>
+  </el-card>
+
+  <!-- Markdown Content with Scroll -->
   <el-card v-if="file_content" class="custom_card">
-    <div class="markdown_content" v-html="rendered_markdown" />
+    <div
+      class="markdown_content"
+      v-html="rendered_markdown"
+      ref="markdown_container"
+    />
   </el-card>
 </template>
 
 <script setup>
 import { ref, toRef, computed, watchEffect, nextTick } from "vue";
-import { ElMessage } from "element-plus";
+import { ElNotification } from "element-plus";
 import { marked } from "marked";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
@@ -38,16 +54,64 @@ const file_content = ref("");
 const rendered_markdown = ref("");
 const is_loading = ref(false);
 const err = ref("");
+const index = ref([]);
 
 const file_url = computed(() => {
   return `${base_url}/${content_path}/${page.value}`;
 });
+
+const markdown_container = ref(null);
 
 watchEffect(async () => {
   if (page.value) {
     await load_file();
   }
 });
+
+const generate_index = (markdown) => {
+  const lines = markdown.split("\n");
+  const heading_levels = [0, 0, 0, 0, 0, 0]; // Track levels for up to 6 heading levels
+  const local_index = [];
+
+  lines.forEach((line) => {
+    const match = line.match(/^(#{1,6})\s+(.*)/);
+    if (match) {
+      const level = match[1].length; // Number of `#` determines the level
+      const title = match[2].trim();
+
+      // Increment the current level and reset sublevels
+      heading_levels[level - 1]++;
+      for (let i = level; i < heading_levels.length; i++) {
+        heading_levels[i] = 0;
+      }
+
+      // Construct the ID based on the levels
+      const id = heading_levels.slice(0, level).join(".");
+
+      // Add ID to headings in the markdown content
+      local_index.push({ id, level, title });
+    }
+  });
+
+  index.value = local_index;
+  return local_index;
+};
+
+const scroll_to = (id) => {
+  if (!markdown_container.value) return;
+
+  // Find the corresponding heading by its ID in the rendered content
+  const target = markdown_container.value.querySelector(`[id="${id}"]`);
+  if (target) {
+    const parentElement = markdown_container.value.closest(".el-scrollbar__wrap");
+    if (parentElement) {
+      parentElement.scrollTo({
+        top: target.offsetTop - parentElement.offsetTop,
+        behavior: "smooth",
+      });
+    }
+  }
+};
 
 const load_file = async () => {
   is_loading.value = true;
@@ -63,8 +127,28 @@ const load_file = async () => {
     }
 
     const text = await res.text();
+
+    // Check if the content is a valid string before passing to marked
+    if (typeof text !== 'string') {
+      throw new Error("The content is not a valid string");
+    }
+
     file_content.value = text;
-    rendered_markdown.value = marked(text);
+
+
+    const local_index = generate_index(text);
+
+    // Ensure the markdown renderer works with the correct input
+    const renderer = new marked.Renderer();
+    renderer.heading = function (elem) {
+      const text = elem?.text;
+      const heading = local_index.find(item => item.title === text);
+      const level = heading ? heading.level : 1; // Default to level 1 if not found
+      const id = heading ? heading.id : "1";
+      return `<h${level} id="${id}">${text}</h${level}>`;
+    };
+
+    rendered_markdown.value = marked(text, { renderer });
 
     await nextTick();
     enhance_code_blocks();
@@ -218,5 +302,47 @@ const enhance_code_blocks = () => {
 
 :deep(.copy_button:hover) {
   background-color: var(--el-color-info-light-3);
+}
+
+.floating_index_card {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 300px;
+  background-color: var(--el-bg-color-page);
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.floating_index_card h3 {
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--el-color-primary);
+}
+
+.floating_index_card ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.floating_index_card li {
+  margin: 4px 0;
+  font-family: "Arial", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--el-color-text-primary);
+}
+
+.floating_index_card li a {
+  text-decoration: none;
+  color: var(--el-color-primary);
+}
+
+.floating_index_card li a:hover {
+  text-decoration: underline;
 }
 </style>
