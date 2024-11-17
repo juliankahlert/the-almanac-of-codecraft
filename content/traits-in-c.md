@@ -420,3 +420,5 @@ The fish structure similarly implements swimming and item characteristics with f
 Trait structures are initialized to link the functions to their behaviors, and memory allocation for instances of the crab and fish is handled by `create_crab` and `create_fish` functions, which also set the trait pointers.
 
 This showcases how traits can provide polymorphism and flexible interactions between types in C, while promoting a clean, modular design that avoids mnessy inheritance.
+
+> License: CC BY 4.0

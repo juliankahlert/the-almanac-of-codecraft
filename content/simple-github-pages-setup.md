@@ -110,3 +110,5 @@ Replace `<your-username>` and `<your-repository>` with your GitHub username and 
 
 With this automated workflow, GitHub Pages now takes care of deploying your site whenever you push changes to the `main` branch.
 This gives you an easy, automated way to keep your website up-to-date with just a simple push to GitHub.
+
+> License: CC BY 4.0
