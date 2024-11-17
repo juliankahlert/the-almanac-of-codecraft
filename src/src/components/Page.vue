@@ -87,7 +87,7 @@ const highlight_code_blocks = () => {
 .custom_card {
   background-color: var(--el-bg-color-page);
   border-radius: 16px;
-  max-width: 100%;
+  max-width: 80%;
   width: fit-content;
   padding: 20px;
   margin: 20px auto; /* Center horizontally */
