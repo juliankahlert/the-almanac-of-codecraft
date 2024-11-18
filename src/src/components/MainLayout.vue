@@ -21,13 +21,11 @@
 -->
         <!-- Main Section: Page Component with scroll -->
         <el-main class="main_content">
-          <el-scrollbar style="height: 100%; overflow: auto">
-            <Page
-              :base_url="base_url"
-              :content_path="content_path"
-              :page="page"
-            />
-          </el-scrollbar>
+          <Page
+            :base_url="base_url"
+            :content_path="content_path"
+            :page="page"
+          />
         </el-main>
       </el-container>
     </el-container>

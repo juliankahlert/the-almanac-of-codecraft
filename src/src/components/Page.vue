@@ -1,29 +1,39 @@
 <template>
-  <div v-if="is_loading">Loading...</div>
-  <div v-if="err" class="error_message">{{ err }}</div>
+  <el-scrollbar style="height: 100%; overflow: auto">
+    <div v-if="is_loading">Loading...</div>
+    <div v-if="err" class="error_message">{{ err }}</div>
 
-  <!-- Floating Index Section -->
-  <el-card v-if="index.length" class="floating_index_card">
-    <h3>Index</h3>
-    <ul>
-      <li v-for="item in index" :key="item.id">
-        <a :href="'#' + item.id" @click.prevent="scroll_to(item.id)">{{ item.id }}. {{ item.title }}</a>
-      </li>
-    </ul>
-  </el-card>
+    <!-- Floating Index Section -->
+    <el-card v-if="index.length" class="floating_index_card">
+      <h3>Index</h3>
+      <div class="floating_index_card_links">
+        <div v-for="item in index" :key="item.id">
+          <div
+            :class="{
+              'index-item': true,
+            }"
+            :style="{ paddingLeft: (item.level - 1) * 20 + 'px' }"
+            @click="scroll_to(item.id)"
+          >
+            <el-text :class="{ 'active-anchor': item.is_active }" >{{ item.title }}</el-text>
+          </div>
+        </div>
+      </div>
+    </el-card>
 
-  <!-- Markdown Content with Scroll -->
-  <el-card v-if="file_content" class="custom_card">
-    <div
-      class="markdown_content"
-      v-html="rendered_markdown"
-      ref="markdown_container"
-    />
-  </el-card>
+    <!-- Markdown Content with Scroll -->
+    <el-card v-if="file_content" class="custom_card">
+      <div
+        class="markdown_content"
+        v-html="rendered_markdown"
+        ref="markdown_container"
+      />
+    </el-card>
+  </el-scrollbar>
 </template>
 
 <script setup>
-import { ref, toRef, computed, watchEffect, nextTick } from "vue";
+import { ref, toRef, computed, watchEffect, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { ElNotification } from "element-plus";
 import { marked } from "marked";
 import hljs from "highlight.js";
@@ -62,6 +72,76 @@ const file_url = computed(() => {
 
 const markdown_container = ref(null);
 
+// Intersection Observer to detect which section is currently visible
+let observer;
+
+onMounted(() => {
+  // Initialize IntersectionObserver
+  observer = new IntersectionObserver(onIntersectionChange, {
+    root: markdown_container.value,
+    rootMargin: '0px',
+    threshold: 0.5, // Trigger when 50% of the section is in view
+  });
+
+  watchEffect(() => {
+    if (observer) observer.disconnect();
+
+    if (markdown_container.value) {
+      const headings = markdown_container.value.querySelectorAll("h1, h2, h3, h4, h5, h6");
+      headings.forEach((heading) => observer.observe(heading));
+    }
+  });
+});
+
+onBeforeUnmount(() => {
+  if (observer) {
+    observer.disconnect();
+  }
+});
+
+let visible_entries = [];
+const onIntersectionChange = (entries) => {
+
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      visible_entries.push(entry);
+    } else {
+      visible_entries = visible_entries.filter(e => e.target.id !== entry.target.id)
+    }
+  });
+
+  console.log("visible:", visible_entries);
+  // Sort the visible_entries by the id attribute, in ascending order
+  const sorted_visible_entries = visible_entries.sort((a, b) => {
+    // Convert the ID to a numeric array (e.g., '1.1' -> [1, 1])
+    const aIdParts = a.target.id.split('.').map(Number);
+    const bIdParts = b.target.id.split('.').map(Number);
+
+    // Compare each part of the IDs (assuming numerical structure)
+    for (let i = 0; i < Math.max(aIdParts.length, bIdParts.length); i++) {
+      const aPart = aIdParts[i] || 0; // Default to 0 if the part is missing
+      const bPart = bIdParts[i] || 0; // Default to 0 if the part is missing
+
+      if (aPart < bPart) return -1;
+      if (aPart > bPart) return 1;
+    }
+    return 0; // If they are equal
+  });
+
+  // The first entry in the sorted array is the one with the smallest ID
+  const active_entry = sorted_visible_entries[0] || null;
+
+  if (!active_entry)
+    return;
+
+  const active_id = active_entry.target.id;
+  index.value.forEach((item) => {
+    item.is_active = active_id === item.id;
+  });
+
+  console.log("Active ID:", active_id);
+};
+
 watchEffect(async () => {
   if (page.value) {
     await load_file();
@@ -70,13 +150,13 @@ watchEffect(async () => {
 
 const generate_index = (markdown) => {
   const lines = markdown.split("\n");
-  const heading_levels = [0, 0, 0, 0, 0, 0]; // Track levels for up to 6 heading levels
+  const heading_levels = [0, 0, 0, 0, 0, 0];
   const local_index = [];
 
   lines.forEach((line) => {
     const match = line.match(/^(#{1,6})\s+(.*)/);
     if (match) {
-      const level = match[1].length; // Number of `#` determines the level
+      const level = match[1].length;
       const title = match[2].trim();
 
       // Increment the current level and reset sublevels
@@ -89,13 +169,14 @@ const generate_index = (markdown) => {
       const id = heading_levels.slice(0, level).join(".");
 
       // Add ID to headings in the markdown content
-      local_index.push({ id, level, title });
+      local_index.push({ id, level, title, is_active: false });
     }
   });
 
   index.value = local_index;
   return local_index;
 };
+
 
 const scroll_to = (id) => {
   if (!markdown_container.value) return;
@@ -135,7 +216,6 @@ const load_file = async () => {
 
     file_content.value = text;
 
-
     const local_index = generate_index(text);
 
     // Ensure the markdown renderer works with the correct input
@@ -145,6 +225,7 @@ const load_file = async () => {
       const heading = local_index.find(item => item.title === text);
       const level = heading ? heading.level : 1; // Default to level 1 if not found
       const id = heading ? heading.id : "1";
+      console.log(elem);
       return `<h${level} id="${id}">${text}</h${level}>`;
     };
 
@@ -316,6 +397,14 @@ const enhance_code_blocks = () => {
   padding: 16px;
 }
 
+.floating_index_card_links {
+  text-align: left;
+}
+
+.index-item {
+  cursor: pointer;
+}
+
 .floating_index_card h3 {
   margin-bottom: 8px;
   font-size: 16px;
@@ -323,26 +412,8 @@ const enhance_code_blocks = () => {
   color: var(--el-color-primary);
 }
 
-.floating_index_card ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
-
-.floating_index_card li {
-  margin: 4px 0;
-  font-family: "Arial", sans-serif;
-  font-size: 14px;
-  line-height: 1.4;
-  color: var(--el-color-text-primary);
-}
-
-.floating_index_card li a {
-  text-decoration: none;
+/* Active link style */
+:deep(.active-anchor) {
   color: var(--el-color-primary);
-}
-
-.floating_index_card li a:hover {
-  text-decoration: underline;
 }
 </style>

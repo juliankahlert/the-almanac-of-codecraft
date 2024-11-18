@@ -23,4 +23,9 @@ export default defineConfig({
       resolvers: [ElementPlusResolver()],
     }),
   ],
+  resolve: {
+    alias: {
+      'element-plus/es/components/anchor-item/style/css': 'element-plus/es/components/anchor/style/css',
+    },
+  },
 });
