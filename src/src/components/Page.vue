@@ -43,7 +43,6 @@ import { ref, toRef, computed, watchEffect, nextTick, onMounted, onBeforeUnmount
 import { ElNotification } from "element-plus";
 import { marked } from "marked";
 import hljs from "highlight.js";
-import "highlight.js/styles/github.css";
 import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'; // Import icons
 
 const props = defineProps({
@@ -84,7 +83,48 @@ const markdown_container = ref(null);
 // Intersection Observer to detect which section is currently visible
 let observer;
 
+// Import the CSS files as text using Vite's raw import
+import githubDarkCss from 'highlight.js/styles/github-dark.css?raw';  // Raw import of dark theme CSS
+import githubLightCss from 'highlight.js/styles/github.css?raw';      // Raw import of light theme CSS
+
+// Variables to keep track of the current theme and the injected style tag
+let currentTheme = 'light';  // Default to light theme
+let currentStyleTag = null;
+
+// Function to switch between themes
+const updateTheme = () => {
+  const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  currentTheme = isDarkMode ? 'dark' : 'light';
+  
+  // Remove the previous theme style if it exists
+  if (currentStyleTag) {
+    currentStyleTag.remove();
+  }
+
+  // Inject the appropriate theme CSS as a <style> tag
+  if (currentTheme === 'dark') {
+    currentStyleTag = injectCss(githubDarkCss);
+  } else {
+    currentStyleTag = injectCss(githubLightCss);
+  }
+
+  // Reinitialize highlight.js after the theme switch
+  hljs.highlightAll();
+};
+
+// Helper function to inject CSS content as a <style> tag
+const injectCss = (cssContent) => {
+  const styleTag = document.createElement('style');
+  document.head.appendChild(styleTag);
+  styleTag.innerHTML = cssContent;
+  return styleTag;
+};
 onMounted(() => {
+    // Initialize the theme based on the system's current preference
+    updateTheme();
+  // Watch for changes in system dark mode preference
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
+
   // Initialize IntersectionObserver
   observer = new IntersectionObserver(onIntersectionChange, {
     root: markdown_container.value,
@@ -241,6 +281,10 @@ const enhance_code_blocks = () => {
   const code_blocks = document.querySelectorAll(".markdown_content pre code");
 
   code_blocks.forEach((block) => {
+    // Reset the previous highlight by removing the 'data-highlighted' attribute
+    block.removeAttribute('data-highlighted');
+
+    // Reinitialize the highlight
     hljs.highlightElement(block);
 
     const language_class = Array.from(block.classList).find((cls) =>
