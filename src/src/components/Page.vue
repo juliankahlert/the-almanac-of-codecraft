@@ -4,18 +4,24 @@
     <div v-if="err" class="error_message">{{ err }}</div>
 
     <!-- Floating Index Section -->
-    <el-card v-if="index.length" class="floating_index_card">
-      <h3>Index</h3>
+    <el-card v-if="index.length" class="floating_index_card" :class="{ collapsed: isCollapsed }">
+      <el-icon @click="toggleCollapse" v-if="isCollapsed" class="arrow-icon-left">
+        <arrow-left />
+      </el-icon>
+      <el-icon @click="toggleCollapse" v-else class="arrow-icon-right">
+        <arrow-right />
+      </el-icon>
+      <h3 :class="{ 'transparent-text': isCollapsed }">Index</h3>
       <div class="floating_index_card_links">
         <div v-for="item in index" :key="item.id">
           <div
             :class="{
               'index-item': true,
             }"
-            :style="{ paddingLeft: (item.level - 1) * 20 + 'px' }"
+            :style="{ paddingLeft: (item.level - 1) * 20 + 'px' }" 
             @click="scroll_to(item.id)"
           >
-            <el-text :class="{ 'active-anchor': item.is_active }" >{{ item.title }}</el-text>
+            <el-text :class="{ 'transparent-text': isCollapsed, 'active-anchor': item.is_active && !isCollapsed }" >{{ item.title }}</el-text>
           </div>
         </div>
       </div>
@@ -38,6 +44,7 @@ import { ElNotification } from "element-plus";
 import { marked } from "marked";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
+import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'; // Import icons
 
 const props = defineProps({
   base_url: {
@@ -65,6 +72,8 @@ const rendered_markdown = ref("");
 const is_loading = ref(false);
 const err = ref("");
 const index = ref([]);
+
+const isCollapsed = ref(false); // State for collapse/expand
 
 const file_url = computed(() => {
   return `${base_url}/${content_path}/${page.value}`;
@@ -101,7 +110,6 @@ onBeforeUnmount(() => {
 
 let visible_entries = [];
 const onIntersectionChange = (entries) => {
-
   entries.forEach((entry) => {
     if (entry.isIntersecting) {
       visible_entries.push(entry);
@@ -111,28 +119,23 @@ const onIntersectionChange = (entries) => {
   });
 
   console.log("visible:", visible_entries);
-  // Sort the visible_entries by the id attribute, in ascending order
   const sorted_visible_entries = visible_entries.sort((a, b) => {
-    // Convert the ID to a numeric array (e.g., '1.1' -> [1, 1])
     const aIdParts = a.target.id.split('.').map(Number);
     const bIdParts = b.target.id.split('.').map(Number);
 
-    // Compare each part of the IDs (assuming numerical structure)
     for (let i = 0; i < Math.max(aIdParts.length, bIdParts.length); i++) {
-      const aPart = aIdParts[i] || 0; // Default to 0 if the part is missing
-      const bPart = bIdParts[i] || 0; // Default to 0 if the part is missing
+      const aPart = aIdParts[i] || 0;
+      const bPart = bIdParts[i] || 0;
 
       if (aPart < bPart) return -1;
       if (aPart > bPart) return 1;
     }
-    return 0; // If they are equal
+    return 0;
   });
 
-  // The first entry in the sorted array is the one with the smallest ID
   const active_entry = sorted_visible_entries[0] || null;
 
-  if (!active_entry)
-    return;
+  if (!active_entry) return;
 
   const active_id = active_entry.target.id;
   index.value.forEach((item) => {
@@ -159,16 +162,13 @@ const generate_index = (markdown) => {
       const level = match[1].length;
       const title = match[2].trim();
 
-      // Increment the current level and reset sublevels
       heading_levels[level - 1]++;
       for (let i = level; i < heading_levels.length; i++) {
         heading_levels[i] = 0;
       }
 
-      // Construct the ID based on the levels
       const id = heading_levels.slice(0, level).join(".");
 
-      // Add ID to headings in the markdown content
       local_index.push({ id, level, title, is_active: false });
     }
   });
@@ -177,11 +177,9 @@ const generate_index = (markdown) => {
   return local_index;
 };
 
-
 const scroll_to = (id) => {
   if (!markdown_container.value) return;
 
-  // Find the corresponding heading by its ID in the rendered content
   const target = markdown_container.value.querySelector(`[id="${id}"]`);
   if (target) {
     const parentElement = markdown_container.value.closest(".el-scrollbar__wrap");
@@ -209,7 +207,6 @@ const load_file = async () => {
 
     const text = await res.text();
 
-    // Check if the content is a valid string before passing to marked
     if (typeof text !== 'string') {
       throw new Error("The content is not a valid string");
     }
@@ -218,12 +215,11 @@ const load_file = async () => {
 
     const local_index = generate_index(text);
 
-    // Ensure the markdown renderer works with the correct input
     const renderer = new marked.Renderer();
     renderer.heading = function (elem) {
       const text = elem?.text;
       const heading = local_index.find(item => item.title === text);
-      const level = heading ? heading.level : 1; // Default to level 1 if not found
+      const level = heading ? heading.level : 1;
       const id = heading ? heading.id : "1";
       console.log(elem);
       return `<h${level} id="${id}">${text}</h${level}>`;
@@ -244,10 +240,8 @@ const enhance_code_blocks = () => {
   const code_blocks = document.querySelectorAll(".markdown_content pre code");
 
   code_blocks.forEach((block) => {
-    // Highlight the code
     hljs.highlightElement(block);
 
-    // Extract language from class (e.g., "language-javascript")
     const language_class = Array.from(block.classList).find((cls) =>
       cls.startsWith("language-")
     );
@@ -255,27 +249,22 @@ const enhance_code_blocks = () => {
       ? language_class.replace("language-", "")
       : "Plain Text";
 
-    // Create a header bar
     const header_bar = document.createElement("div");
     header_bar.classList.add("code_header_bar");
 
-    // Add language label
     const language_label = document.createElement("span");
     language_label.classList.add("language_label");
     language_label.innerText = language;
     header_bar.appendChild(language_label);
 
-    // Add "Copy Raw" button
     const copy_button = document.createElement("button");
     copy_button.innerText = "Copy Raw";
     copy_button.classList.add("copy_button");
 
-    // Add click event to copy the raw code
     copy_button.addEventListener("click", () => {
       navigator.clipboard
         .writeText(block.innerText)
         .then(() => {
-          // Show success notification
           ElNotification({
             title: "Copied!",
             message: "Code copied to clipboard successfully.",
@@ -297,14 +286,19 @@ const enhance_code_blocks = () => {
 
     header_bar.appendChild(copy_button);
 
-    // Insert the header bar before the code block
     const pre_element = block.parentElement;
-    pre_element.style.position = "relative"; // To position the bar correctly
+    pre_element.style.position = "relative"; 
     if (!pre_element.querySelector(".code_header_bar")) {
       pre_element.insertBefore(header_bar, block);
     }
   });
 };
+
+// Function to toggle the collapse state of the index card
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value;
+};
+
 </script>
 
 <style scoped>
@@ -314,7 +308,7 @@ const enhance_code_blocks = () => {
   max-width: 80%;
   width: fit-content;
   padding: 20px;
-  margin: 20px auto; /* Center horizontally */
+  margin: 20px auto;
 }
 
 .markdown_content {
@@ -395,6 +389,11 @@ const enhance_code_blocks = () => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border-radius: 8px;
   padding: 16px;
+  transition: transform 0.3s ease;
+}
+
+.floating_index_card.collapsed {
+  transform: translateX(90%); /* Collapsed to the left */
 }
 
 .floating_index_card_links {
@@ -410,6 +409,26 @@ const enhance_code_blocks = () => {
   font-size: 16px;
   font-weight: bold;
   color: var(--el-color-primary);
+  cursor: pointer;
+  position: relative;
+}
+
+.arrow-icon-left, .arrow-icon-right {
+  margin: 8px;
+  position: absolute;
+  top: 0;
+}
+
+.arrow-icon-left {
+  left: 0;
+}
+
+.arrow-icon-right {
+  right: 0;
+}
+
+.transparent-text {
+  color: transparent;
 }
 
 /* Active link style */
