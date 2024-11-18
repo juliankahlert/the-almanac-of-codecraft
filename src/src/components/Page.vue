@@ -4,14 +4,14 @@
     <div v-if="err" class="error_message">{{ err }}</div>
 
     <!-- Floating Index Section -->
-    <el-card v-if="index.length" class="floating_index_card" :class="{ collapsed: isCollapsed }">
-      <el-icon @click="toggleCollapse" v-if="isCollapsed" class="arrow-icon-left">
+    <el-card v-if="index.length" class="floating_index_card" :class="{ collapsed: is_collapsed }">
+      <el-icon @click="toggle_collapse" v-if="is_collapsed" class="arrow-icon-left">
         <arrow-left />
       </el-icon>
-      <el-icon @click="toggleCollapse" v-else class="arrow-icon-right">
+      <el-icon @click="toggle_collapse" v-else class="arrow-icon-right">
         <arrow-right />
       </el-icon>
-      <h3 :class="{ 'transparent-text': isCollapsed }">Index</h3>
+      <h3 :class="{ 'transparent-text': is_collapsed }">Index</h3>
       <div class="floating_index_card_links">
         <div v-for="item in index" :key="item.id">
           <div
@@ -21,7 +21,7 @@
             :style="{ paddingLeft: (item.level - 1) * 20 + 'px' }" 
             @click="scroll_to(item.id)"
           >
-            <el-text :class="{ 'transparent-text': isCollapsed, 'active-anchor': item.is_active && !isCollapsed }" >{{ item.title }}</el-text>
+            <el-text :class="{ 'transparent-text': is_collapsed, 'active-anchor': item.is_active && !is_collapsed }" >{{ item.title }}</el-text>
           </div>
         </div>
       </div>
@@ -73,7 +73,7 @@ const is_loading = ref(false);
 const err = ref("");
 const index = ref([]);
 
-const isCollapsed = ref(false); // State for collapse/expand
+const is_collapsed = ref(false); // State for collapse/expand
 
 const file_url = computed(() => {
   return `${base_url}/${content_path}/${page.value}`;
@@ -100,12 +100,17 @@ onMounted(() => {
       headings.forEach((heading) => observer.observe(heading));
     }
   });
+
+  // Automatically collapse index if window size changes
+  window.addEventListener('resize', handle_resize);
+  handle_resize(); // Initial check
 });
 
 onBeforeUnmount(() => {
   if (observer) {
     observer.disconnect();
   }
+  window.removeEventListener('resize', handle_resize);
 });
 
 let visible_entries = [];
@@ -118,7 +123,6 @@ const onIntersectionChange = (entries) => {
     }
   });
 
-  console.log("visible:", visible_entries);
   const sorted_visible_entries = visible_entries.sort((a, b) => {
     const aIdParts = a.target.id.split('.').map(Number);
     const bIdParts = b.target.id.split('.').map(Number);
@@ -141,8 +145,6 @@ const onIntersectionChange = (entries) => {
   index.value.forEach((item) => {
     item.is_active = active_id === item.id;
   });
-
-  console.log("Active ID:", active_id);
 };
 
 watchEffect(async () => {
@@ -221,7 +223,6 @@ const load_file = async () => {
       const heading = local_index.find(item => item.title === text);
       const level = heading ? heading.level : 1;
       const id = heading ? heading.id : "1";
-      console.log(elem);
       return `<h${level} id="${id}">${text}</h${level}>`;
     };
 
@@ -295,10 +296,27 @@ const enhance_code_blocks = () => {
 };
 
 // Function to toggle the collapse state of the index card
-const toggleCollapse = () => {
-  isCollapsed.value = !isCollapsed.value;
+const toggle_collapse = () => {
+  is_collapsed.value = !is_collapsed.value;
 };
 
+// Function to check if the index card is overlapping with the markdown card
+const handle_resize = () => {
+  const markdown_card = document.querySelector(".custom_card");
+  const index_card = document.querySelector(".floating_index_card");
+
+  if (markdown_card && index_card) {
+    const markdown_card_right = markdown_card.getBoundingClientRect().right;
+    const index_card_left = index_card.getBoundingClientRect().left;
+    const diff = markdown_card_right - index_card_left;
+
+    if (diff > 50) {
+      is_collapsed.value = true;
+    } else if (diff < -300) {
+      is_collapsed.value = false;
+    }
+  }
+};
 </script>
 
 <style scoped>
