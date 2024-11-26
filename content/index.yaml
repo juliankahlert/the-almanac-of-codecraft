@@ -32,3 +32,11 @@ entries:
     tags:
     - "simple Github Pages setup"
     - "Github Pages"
+
+  - id: dynamic
+    title: Introduction to SDBus
+    page: introduction-to-sdbus.md
+    tags:
+    - "D-Bus"
+    - "dbus"
+    - "SDBus"
