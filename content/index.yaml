@@ -40,3 +40,11 @@ entries:
     - "D-Bus"
     - "dbus"
     - "SDBus"
+
+  - id: dynamic
+    title: Mutexes
+    page: mutexes.md
+    tags:
+    - "mutex"
+    - "mutexes"
+    - "synchonization"
